@@ -5,8 +5,6 @@ playing. Built on RoboPianist and the MuJoCo physics engine, it turns piano
 performance into a shared testbed for standard, robust, safe, and cooperative
 multi-agent reinforcement learning.
 
-
-
 ## 🧠Why piano playing?
 
 Dexterous piano playing provides a suitable testbed by combining precise
@@ -58,11 +56,29 @@ attributed to that single design choice.
   environment support, usable from Stable-Baselines3, RLlib, CleanRL, OmniSafe,
   and TorchRL.
 
+## 🔍 Comparison with Related RL Benchmarks
+
+OmniPiano extends existing reinforcement-learning benchmarks by combining scalable dexterous control with robust RL, safe RL, multi-agent RL, and LLM-agent evaluation under a unified task setting.
+
+| Feature                             | RoboPianist | Robust-Gymnasium | Safety-Gymnasium | **OmniPiano** |
+| ----------------------------------- | :---------: | :--------------: | :--------------: | :-----------------: |
+| 🎛️**Action dimension**      |     45     |      1–30      |      2–17      |  **23–111**  |
+| ⏱️**Episode horizon**       |  240–3710  |     50–1600     |    500–1000    | **240–3710** |
+| 🎹**Dexterous piano playing** |     ✅     |        ❌        |        ❌        |    **✅**    |
+| 🛡️**Robust RL track**       |     ❌     |        ✅        |        ❌        |    **✅**    |
+| ⚠️**Safe RL track**         |     ❌     |        ✅        |        ✅        |    **✅**    |
+| 🤝**Multi-Agent RL track**    |     ❌     |        ✅        |        ✅        |    **✅**    |
+| 🔗**Unified task setting**    |     ❌     |        ❌        |        ❌        |    **✅**    |
+| 🤖**LLM agent evaluation**    |     ❌     |        ❌        |        ❌        |    **✅**    |
+
+> **OmniPiano scales from one to five Shadow Hands** , expanding the continuous action space from  **23 to 111 dimensions** .
+> Episodes run at a  **20 Hz control frequency** , with horizons ranging from **240 to 3710 control steps** across the 150-piece repertoire.
+
 ## 📷Demonstrations
 
 ### Multi-hand morphology
 
-```{figure} ../../demos/morphology/5hand_winterwind_l1.gif
+```{figure}
 :alt: Five-hand Winter Wind static-partition demonstration
 :width: 90%
 :align: center
@@ -77,7 +93,7 @@ keyboard workspace changes.
 
 ### Decentralized cooperation
 
-```{figure} ../../demos/morphology/4hand_winterwind_ma_duet.gif
+```{figure}
 :alt: Four-hand multi-agent Winter Wind duet
 :width: 90%
 :align: center
@@ -88,7 +104,7 @@ agents controlling the bass-side and treble-side hand pairs.
 
 ### Explicit safety constraints
 
-```{figure} ../../demos/Collision_Safe/preview.gif
+```{figure}
 :alt: Collision-aware piano-playing task
 :width: 75%
 :align: center
