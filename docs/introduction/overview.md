@@ -78,7 +78,7 @@ OmniPiano extends existing reinforcement-learning benchmarks by combining scalab
 
 ### Multi-hand morphology
 
-```{figure}
+```{figure} ../../demos/morphology/5hand_winterwind_l1.gif
 :alt: Five-hand Winter Wind static-partition demonstration
 :width: 90%
 :align: center
@@ -93,7 +93,7 @@ keyboard workspace changes.
 
 ### Decentralized cooperation
 
-```{figure}
+```{figure} ../../demos/morphology/4hand_winterwind_ma_duet.gif
 :alt: Four-hand multi-agent Winter Wind duet
 :width: 90%
 :align: center
@@ -104,7 +104,7 @@ agents controlling the bass-side and treble-side hand pairs.
 
 ### Explicit safety constraints
 
-```{figure}
+```{figure} ../../demos/Collision_Safe/preview.gif
 :alt: Collision-aware piano-playing task
 :width: 75%
 :align: center
