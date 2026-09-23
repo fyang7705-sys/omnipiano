@@ -2,3 +2,49 @@
     font-weight: bold;
     font-style: italic;
 }
+
+.omnipiano-logo {
+    margin: 0 auto 1.25rem;
+}
+
+/* Make high-value tutorial callouts easy to spot without overpowering code. */
+.admonition {
+    border: 0;
+    border-left: 4px solid #4b6b88;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgb(20 33 46 / 12%);
+}
+
+.admonition.note {
+    background: #eef6ff;
+    border-left-color: #3478b8;
+}
+
+.admonition.tip {
+    background: #eef9f2;
+    border-left-color: #27845b;
+}
+
+.admonition.warning,
+.admonition.important {
+    background: #fff6e8;
+    border-left-color: #c66b18;
+}
+
+.admonition > .admonition-title {
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+html[data-theme="dark"] .admonition.note {
+    background: #172838;
+}
+
+html[data-theme="dark"] .admonition.tip {
+    background: #173027;
+}
+
+html[data-theme="dark"] .admonition.warning,
+html[data-theme="dark"] .admonition.important {
+    background: #352719;
+}
