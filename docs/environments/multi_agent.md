@@ -5,6 +5,16 @@ OmniPiano exposes cooperative multi-hand tasks through the PettingZoo
 into two or three decentralized agents, gives every agent its own observation
 and action space, and keeps one shared musical objective.
 
+```{figure} ../_static/images/maRL.png
+:alt: OmniPiano multi-agent reinforcement learning settings
+:width: 100%
+:align: center
+:class: bold-italic-caption
+
+Multi-agent OmniPiano varies observability, coupling, heterogeneity, and
+scalability through agent-specific observation and action territories.
+```
+
 ```{note}
 Single-agent and multi-agent environments have different APIs. Use
 `omnipiano.make()` for a Gymnasium environment and

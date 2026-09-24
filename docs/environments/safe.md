@@ -6,6 +6,16 @@ same environment can be used with constrained RL algorithms such as CPO,
 PPO-Lagrangian, and PPOLag, as well as with unconstrained baselines that log
 the cost for analysis.
 
+```{figure} ../_static/images/safetyRL.png
+:alt: OmniPiano safety semantics and cost settings
+:width: 100%
+:align: center
+:class: bold-italic-caption
+
+Safe RL in OmniPiano covers joint, power, injury, and collision semantics with
+event, excess, and fractional cost formulations.
+```
+
 ```{important}
 `SafetyWrapper` does **not** subtract the safety cost from the reward. The
 environment returns the musical reward normally and writes costs to `info`.

@@ -6,6 +6,16 @@ hand morphology, Gymnasium API, and evaluation metrics remain unchanged. This
 lets a clean and a perturbed environment differ only in the registered
 `RobustConfig`.
 
+```{figure} ../_static/images/robustRL.png
+:alt: OmniPiano robust reinforcement learning perturbation framework
+:width: 100%
+:align: center
+:class: bold-italic-caption
+
+Robust RL in OmniPiano perturbs actions, observations, rewards, and physical
+environment parameters while preserving the underlying piano task.
+```
+
 Robustness settings belong to the environment ID during training. Evaluation
 may scale those registered magnitudes without creating a second family of
 IDs, as described later under **Evaluation strength**.
