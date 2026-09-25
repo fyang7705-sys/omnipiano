@@ -3,6 +3,20 @@
     font-style: italic;
 }
 
+/* Use publication-style justification for prose only. */
+.bd-article p {
+    text-align: justify;
+    text-justify: inter-word;
+}
+
+.bd-article figcaption p {
+    text-align: center;
+}
+
+.bd-article .admonition-title {
+    text-align: left;
+}
+
 .omnipiano-logo {
     margin: 0 auto 1.25rem;
 }
