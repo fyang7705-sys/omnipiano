@@ -51,7 +51,7 @@ attributed to that single design choice.
   action dimensions — with optional static partitions that clamp each hand to a
   keyboard register.
 - **Comprehensive task coverage**: Up to 150 pieces across eight hand settings,
-  exposed as 600+ registered task IDs spanning all four tracks.
+  with at least 912 task settings spanning all four tracks.
 - **High compatibility**: Gymnasium and PettingZoo APIs with vectorized
   environment support, usable from Stable-Baselines3, RLlib, CleanRL, OmniSafe,
   and TorchRL.
@@ -62,8 +62,7 @@ OmniPiano extends existing reinforcement-learning benchmarks by combining scalab
 
 | Feature                             | RoboPianist | Robust-Gymnasium | Safety-Gymnasium | **OmniPiano** |
 | ----------------------------------- | :---------: | :--------------: | :--------------: | :-----------------: |
-| 🎛️**Action dimension**      |     45     |      1–30      |      2–17      |  **23–111**  |
-| ⏱️**Episode horizon**       |  240–3710  |     50–1600     |    500–1000    | **240–3710** |
+| 🎛️**Action dimension**      |     45     |      1–30      |      2–17      |  **23–11**  |
 | 🎹**Dexterous piano playing** |     ✅     |        ❌        |        ❌        |    **✅**    |
 | 🛡️**Robust RL track**       |     ❌     |        ✅        |        ❌        |    **✅**    |
 | ⚠️**Safe RL track**         |     ❌     |        ✅        |        ✅        |    **✅**    |
@@ -74,43 +73,89 @@ OmniPiano extends existing reinforcement-learning benchmarks by combining scalab
 > **OmniPiano scales from one to five Shadow Hands** , expanding the continuous action space from  **23 to 111 dimensions** .
 > Episodes run at a  **20 Hz control frequency** , with horizons ranging from **240 to 3710 control steps** across the 150-piece repertoire.
 
-## 📷Demonstrations
+### Supported baseline algorithms
 
-### Multi-hand morphology
+Baseline algorithms supported by OmniPiano across its four evaluation tracks:
 
-```{figure} ../../demos/morphology/5hand_winterwind_l1.gif
-:alt: Five-hand Winter Wind static-partition demonstration
-:width: 90%
-:align: center
+| Track | Baselines |
+| --- | --- |
+| Standard RL | *A2C*, ARS, <u>CrossQ</u>, <u>DDPG</u>, <u>DroQ</u>, *PPO*, <u>SAC</u>, <u>TD3</u>, <u>TQC</u>, *TRPO* |
+| Robust RL | <u>A2P-SAC</u>, *EPPO*, <u>OMPO</u>, <u>SCPO</u> |
+| Safe RL | *PPO-Lag*, *TRPO-Lag*, *RCPO*, *PDO*, *FOCOPS*, *CPO*, *PCPO*, *OnCRPO*, *IPO*, *P3O*, *CUP*, <u>DDPG-Lag</u>, <u>TD3-Lag</u>, <u>SAC-Lag</u> |
+| Multi-Agent RL | *IPPO*, *MAPPO*, *HAPPO*, *MAT*, *A2PO*, <u>HATD3</u>, <u>FACMAC</u>, <u>MACSAC</u> |
 
-Five-hand *Winter Wind* with a Level-1 static keyboard partition. Each hand is
-assigned a register, encouraging all five hands to participate in the piece.
+*Italic* denotes on-policy methods; <u>underlined</u> denotes off-policy
+methods. ARS is a derivative-free policy-search method.
+
+## 🎬 Demonstrations
+
+Swipe horizontally, use a trackpad, or focus a gallery and scroll with the
+keyboard. Select a video to play it; each player has its own timeline and
+volume controls.
+
+### Standard RL
+
+```{raw} html
+<div class="demo-gallery" role="region" aria-label="Standard RL videos" tabindex="0">
+  <figure class="demo-card">
+    <video controls preload="none" poster="../featured-furelise-2hand.jpg" aria-label="Featured two-hand Für Elise performance"><source src="../featured-furelise-2hand.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+    <figcaption><strong>Featured: Für Elise</strong><span>Two-hand piano performance</span></figcaption>
+  </figure>
+  <figure class="demo-card">
+    <video controls preload="none" poster="../std-sac-furelise-1hand.jpg" aria-label="One-hand SAC playing Für Elise"><source src="../std-sac-furelise-1hand.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+    <figcaption><strong>Für Elise · One hand</strong><span>Standard RL with SAC</span></figcaption>
+  </figure>
+  <figure class="demo-card">
+    <video controls preload="none" poster="../std-sac-furelise-2hand.jpg" aria-label="Two-hand SAC playing Für Elise"><source src="../std-sac-furelise-2hand.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+    <figcaption><strong>Für Elise · Two hands</strong><span>Standard RL with SAC</span></figcaption>
+  </figure>
+  <figure class="demo-card">
+    <video controls preload="none" poster="../std-sac-greatkiev-3hand.jpg" aria-label="Three-hand SAC playing Pictures at an Exhibition Great Kiev"><source src="../std-sac-greatkiev-3hand.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+    <figcaption><strong>Great Kiev · Three hands</strong><span>Standard RL with SAC</span></figcaption>
+  </figure>
+  <figure class="demo-card">
+    <video controls preload="none" poster="../std-sac-winterwind-4hand.jpg" aria-label="Four-hand SAC playing Winter Wind"><source src="../std-sac-winterwind-4hand.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+    <figcaption><strong>Winter Wind · Four hands</strong><span>Standard RL with SAC</span></figcaption>
+  </figure>
+</div>
 ```
 
-Static partitions provide a controlled comparison with unrestricted
-morphologies: the music and hand geometry can remain fixed while the permitted
-keyboard workspace changes.
+### Robust RL
 
-### Decentralized cooperation
-
-```{figure} ../../demos/morphology/4hand_winterwind_ma_duet.gif
-:alt: Four-hand multi-agent Winter Wind duet
-:width: 90%
-:align: center
-
-Four-hand *Winter Wind* performed as a cooperative duet by two decentralized
-agents controlling the bass-side and treble-side hand pairs.
+```{raw} html
+<div class="demo-gallery" role="region" aria-label="Robust RL videos" tabindex="0">
+  <figure class="demo-card">
+    <video controls preload="none" poster="../rob-clairdelune-2hand-action.jpg" aria-label="Two-hand Clair de Lune under action noise"><source src="../rob-clairdelune-2hand-action.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+    <figcaption><strong>Clair de Lune · Two hands</strong><span>Action noise</span></figcaption>
+  </figure>
+  <figure class="demo-card">
+    <video controls preload="none" poster="../rob-furelise-3hand-obs-action.jpg" aria-label="Three-hand Für Elise under observation and action noise"><source src="../rob-furelise-3hand-obs-action.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+    <figcaption><strong>Für Elise · Three hands</strong><span>Observation and action noise</span></figcaption>
+  </figure>
+  <figure class="demo-card">
+    <video controls preload="none" poster="../rob-furelise-5hand-obs.jpg" aria-label="Five-hand Für Elise under observation noise"><source src="../rob-furelise-5hand-obs.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+    <figcaption><strong>Für Elise · Five hands</strong><span>Observation noise</span></figcaption>
+  </figure>
+</div>
 ```
 
-### Explicit safety constraints
+### Multi-Agent RL
 
-```{figure} ../../demos/Collision_Safe/preview.gif
-:alt: Collision-aware piano-playing task
-:width: 75%
-:align: center
-
-Collision-aware piano playing. Musical reward and collision cost are exposed
-as separate signals so safe-RL algorithms can optimize their trade-off.
+```{raw} html
+<div class="demo-gallery" role="region" aria-label="Multi-Agent RL videos" tabindex="0">
+  <figure class="demo-card">
+    <video controls preload="none" poster="../marl-two-agents-four-hands.jpg" aria-label="Two agents controlling four hands"><source src="../marl-two-agents-four-hands.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+    <figcaption><strong>Two agents · Four hands</strong><span>Base cooperative setting</span></figcaption>
+  </figure>
+  <figure class="demo-card">
+    <video controls preload="none" poster="../marl-heterogeneity.jpg" aria-label="Heterogeneous hand assignment with one hand versus three hands"><source src="../marl-heterogeneity.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+    <figcaption><strong>One hand vs. three hands</strong><span>Heterogeneity setting</span></figcaption>
+  </figure>
+  <figure class="demo-card">
+    <video controls preload="none" poster="../marl-four-agents-one-hand.jpg" aria-label="Four agents controlling one hand each"><source src="../marl-four-agents-one-hand.mp4" type="video/mp4">Your browser does not support HTML5 video.</video>
+    <figcaption><strong>Four agents · One hand each</strong><span>Scalability setting</span></figcaption>
+  </figure>
+</div>
 ```
 
 Continue with the [Quick Start](quick_start.md) to install OmniPiano and run a

@@ -1,10 +1,9 @@
 # Safe Environments
 
-Safe environments add explicit physical constraints to a standard OmniPiano
-task. The task reward and safety cost are returned as separate signals, so the
-same environment can be used with constrained RL algorithms such as CPO,
-PPO-Lagrangian, and PPOLag, as well as with unconstrained baselines that log
-the cost for analysis.
+Safe environments formulate piano playing as a constrained Markov decision
+process (CMDP). Musical reward and physical safety cost are separate signals,
+allowing constrained algorithms to enforce an episode budget without changing
+the piano objective.
 
 ```{figure} ../_static/images/safetyRL.png
 :alt: OmniPiano safety semantics and cost settings
@@ -12,155 +11,220 @@ the cost for analysis.
 :align: center
 :class: bold-italic-caption
 
-Safe RL in OmniPiano covers joint, power, injury, and collision semantics with
-event, excess, and fractional cost formulations.
+Safe RL in OmniPiano combines four physical safety semantics with event,
+excess, and fraction cost settings.
 ```
 
 ```{important}
-`SafetyWrapper` does **not** subtract the safety cost from the reward. The
-environment returns the musical reward normally and writes costs to `info`.
-The training algorithm decides how to enforce or trade off the constraint.
+`SafetyWrapper` never subtracts safety cost from reward and never terminates
+an episode because of cost. The algorithm receives musical reward normally and
+reads the separate cost from `info`.
 ```
 
-## Register a safe environment
+## At a glance
 
-Safety constraints are registered inside `SafetyConfig` and attached to a
-normal `TaskSpec`. The shortest example uses binary hand-hand collision cost:
+| Aspect | Safe RL |
+| --- | --- |
+| Interface | Gymnasium `Env` via `omnipiano.make(env_id)` |
+| Task selection | Choose a safety `Task` with a semantic, cost setting, and budget |
+| Registration | `omnipiano.safety.suite.register_task()`; safety IDs are registered on demand |
+| Evaluation | `mode="eval"` enables musical F1; safety cost remains in `info` |
+
+## Register an environment
+
+The current safety suite is factorized and registered on demand. Importing
+`omnipiano` does not automatically register these tasks. Select a task from
+a suite manifest and call `register_task()` in every process that constructs
+the environment:
 
 ```python
-from omnipiano import register
-from omnipiano.configs import SafetyConfig
-from omnipiano.safety.constraints import HandCollisionConstraint
+import omnipiano
+from omnipiano.safety.suite import MAIN, register_task
 
-register(
-    id="OmniPiano-ClairDeLune-CollisionSafe-Custom-v0",
-    base_env_name="RoboPianist-repertoire-150-ClairDeLune-v0",
-    safety_config=SafetyConfig(
-        constraints=[HandCollisionConstraint(penalty_coef=1.0)],
-    ),
-)
+task = MAIN[0]
+env_id = register_task(task)
+env = omnipiano.make(env_id, seed=1)
+obs, info = env.reset(seed=1)
+env.close()
 ```
 
-For official benchmark tasks, put the declaration in
-`omnipiano/envs/__init__.py`. Local experiments may call `register()` once at
-application startup, before `make()`. As with standard and robust tasks, the
-environment ID should change whenever a trajectory-affecting configuration
-changes.
+Re-registering the same task is safe and returns the same ID after validation.
 
-## Available constraint types
+### Register the complete suite
 
-| Constraint | Constructor idea | Cost interpretation | `info` key |
-| --- | --- | --- | --- |
-| `JointMagnitudeConstraint` | one action index and a maximum magnitude | excess normalized action magnitude | `step_safety/cost_joint_<index>_mag` |
-| `MultiJointSharedMagnitudeConstraint` | joint group and per-joint ceiling | sum of each joint's excess magnitude | `step_safety/cost_group_<name>_mag` |
-| `MultiJointSummedMagnitudeConstraint` | joint group and shared budget | excess over the group's summed magnitude budget | `step_safety/cost_group_<name>_sum_mag` |
-| `HandCollisionConstraint` | penalty coefficient | fixed cost when any hand-hand contact exists | `step_safety/cost_hand_collision` |
-| `HandCollisionForceConstraint` | penalty coefficient | continuous cost proportional to normal contact force | `step_safety/cost_hand_collision_force` |
-| `TotalActuatorPowerConstraint` | penalty coefficient | dense total actuator power, `abs(force) * abs(velocity)` | `step_safety/cost_total_actuator_power` |
-| `InjuredJointPowerConstraint` | hand, joint names, coefficient | power used by selected injury-sensitive actuators | `step_safety/cost_injured_<hand>_<joints>_power` |
-
-Every configured constraint contributes its own per-step key. The
-`SafetyWrapper` sums positive constraint costs into
-`step_safety/cost_total` and counts steps with at least one violation in
-`step_safety/violation_any`.
-
-## Compose multiple constraints
-
-Several constraints can be evaluated together. This example combines a
-collision cost with a total-power cost:
+Use `register_all()` when a launcher needs to discover every safety task:
 
 ```python
-from omnipiano import register
-from omnipiano.configs import SafetyConfig
-from omnipiano.safety.constraints import (
-    HandCollisionConstraint,
-    TotalActuatorPowerConstraint,
-)
+from omnipiano.safety.suite import register_all
 
-register(
-    id="OmniPiano-MapleLeafRag-CollisionPower-Custom-v0",
-    base_env_name="RoboPianist-repertoire-150-MapleLeafRag-v0",
-    safety_config=SafetyConfig(
-        constraints=[
-            HandCollisionConstraint(penalty_coef=1.0),
-            TotalActuatorPowerConstraint(penalty_coef=0.1),
-        ],
-    ),
-)
+tasks_by_id = register_all()
+for env_id, task in sorted(tasks_by_id.items()):
+    print(env_id, task.budget)
 ```
 
-The total is a sum of the weighted costs returned by the individual
-constraints. Choosing `penalty_coef` is therefore part of the task definition
-and should be kept in the registration rather than changed at runtime.
+`register_all()` combines all manifests, removes duplicate IDs, registers
+each unique task, and returns an `{env_id: Task}` mapping.
 
-## Run and inspect safety signals
+```{tip}
+Prefer `register_task()` for one experiment. Use `register_all()` only
+for catalogue discovery or batch launchers.
+```
 
-Safe environments use the ordinary Gymnasium API:
+## Supported settings
+
+### Safety semantics
+
+A `CostSpec` selects one physical semantic:
+
+| Semantic | Measurement units | Default threshold/reference |
+| --- | --- | --- |
+| `joint_range` | THJ2, FFJ2, MFJ2, RFJ2, and LFJ2 positions on each selected hand | Outside the central 50% of the native joint range |
+| `actuator_power` | Mechanical power `abs(force * velocity)` | Total reference `4 × hands` for event/excess; per-hand reference `4` for fraction |
+| `injured_finger` | THJ1–THJ5 actuator power on one protected right hand | Per-actuator reference `1.0` |
+| `hand_collision` | Normal contact force for every unordered hand pair | Pair-force reference `10.0` |
+
+These are soft costs. “Injured finger” does not disable an actuator, and
+“joint range” does not physically clamp the joint.
+
+### Cost settings
+
+For non-negative normalized excess values `e_i`, the setting computes:
+
+| Setting | Per-step cost | Interpretation |
+| --- | --- | --- |
+| `event` | `1[any e_i > 0]` | Whether any violation exists at this step |
+| `fraction` | `mean(1[e_i > 0])` | Fraction of monitored units in violation |
+| `excess` | `mean(e_i)` | Mean normalized violation severity |
+
+All four semantics support all three settings, producing a 4 × 3 catalogue.
+The optional weight is applied after aggregation.
+
+```{note}
+For actuator power, event/excess measure total-system power, whereas fraction
+measures the share of selected hands above a per-hand threshold. They share a
+safety theme but not an identical measurement unit.
+```
+
+## Environment IDs
+
+Safety IDs are derived from the complete task specification:
+
+```text
+OmniPiano-Safety-{Song}-{N}H-{semantic}-{setting}-{hash}-v1
+```
+
+The hash covers the number of hands, song, cost specification, episode budget,
+and hand layout. Do not guess it manually; use `task.env_id` or the value
+returned by `register_task()`.
+
+```{warning}
+Legacy IDs such as `OmniPiano-ClairDeLune-CollisionSafe-v0`,
+`...-WristLimit-v0`, and `...-PowerConstrained-v0` do not identify
+tasks in the new factorized safety suite. Use
+`omnipiano.safety.suite.register_task`.
+```
+
+### Suite manifests
+
+| Manifest | Contents |
+| --- | --- |
+| `MAIN` | Eight selected 2–5 hand tasks used by the main experiment |
+| `HANDS` | Nested 2–5 hand actuator-power sensitivity tasks |
+| `THRESHOLDS` | Five episode budgets for a fixed four-hand power task |
+| `EXTENSIONS` | Four hand/song anchors across all 12 semantic/setting combinations |
+
+Default episode budgets are proportional to nominal song length:
+`0.05 × T` for event/fraction and `0.02 × T` for excess. The budget is
+stored on the immutable safety `Task`, not in the core `SafetyConfig`.
+
+## Define a custom task
+
+The suite's `task()` helper applies the same validation and ID generation:
 
 ```python
-from omnipiano import make
+import omnipiano
+from omnipiano.safety.suite import register_task, task
 
-env = make("OmniPiano-ClairDeLune-CollisionSafe-v0", seed=42)
-obs, info = env.reset()
+spec = task(
+    hands=3,
+    song="PolonaiseOp40No1",
+    semantic="hand_collision",
+    setting="excess",
+    budget=12.0,
+)
+env_id = register_task(spec)
+env = omnipiano.make(env_id, mode="eval", seed=0)
+obs, info = env.reset(seed=0)
+env.close()
+```
+
+Supported songs are `ForElise`, `ClairDeLune`,
+`PicturesGreatKiev`, and `PolonaiseOp40No1`; hand counts are 2–5.
+
+Internally, `register_task()` registers explicit N-hand specs, OT fingering,
+the safety protocol's zero energy reward penalty, and one
+`SemanticConstraint` in the existing `SafetyConfig`. Older classes in
+`omnipiano.safety.constraints` remain for legacy compatibility but are not
+the recommended registration surface.
+
+## Run an environment
+
+Use `mode="eval"` whenever final musical F1 is required:
+
+```python
+import omnipiano
+from omnipiano.safety.suite import MAIN, register_task
+
+task = MAIN[0]
+env_id = register_task(task)
+env = omnipiano.make(env_id, mode="eval", seed=1)
+obs, info = env.reset(seed=1)
 
 terminated = truncated = False
 while not (terminated or truncated):
     obs, reward, terminated, truncated, info = env.step(
         env.action_space.sample()
     )
-    musical_reward = reward
-    safety_cost = info["step_safety/cost_total"]
+    step_cost = info["step_safety/cost_total"]
 
-if "episode_safety/cost_total" in info:
-    print("episode safety cost:", info["episode_safety/cost_total"])
-    print("unsafe steps:", info["episode_safety/violations"])
+print("musical F1:", info["episode_task/f1"])
+print("episode cost:", info["episode_safety/cost_total"])
+print("episode budget:", task.budget)
 env.close()
 ```
 
-At episode termination, `SafetyWrapper` adds:
+## Evaluation and metrics
 
-| Episode key | Meaning |
+```{important}
+The default `mode="train"` emits safety costs but does not emit
+`episode_task/f1`, key precision/recall, or sustain F1. Request
+`mode="eval"` before reading those musical metrics.
+```
+
+| Key pattern | Meaning |
 | --- | --- |
-| `episode_safety/cost_total` | Sum of all step safety costs |
-| `episode_safety/violations` | Number of steps where at least one constraint had positive cost |
+| `step_safety/cost_<semantic>_<setting>` | Cost from the configured semantic/setting |
+| `step_safety/<semantic>/unit_count` | Number of monitored units |
+| `step_safety/<semantic>/raw_max` | Maximum raw measurement at this step |
+| `step_safety/<semantic>/violating_fraction` | Fraction of units with positive excess |
+| `step_safety/cost_total` | Sum of active constraint costs |
+| `episode_safety/cost_total` | Cost accumulated across the episode |
+| `episode_safety/violations` | Steps with at least one positive cost |
 
-Musical metrics remain under `episode_task/*`, for example
-`episode_task/f1`, `episode_task/key_precision`, and
-`episode_task/key_recall`. This makes it possible to report both feasibility
-and musical quality rather than hiding one inside the other.
+A complete result should report task ID, semantic/setting, threshold parameters,
+episode budget, episode cost, violation count, and musical F1. A policy that
+satisfies the budget by remaining inactive is a trivially safe failure.
 
-## Built-in safe task families
+## Runtime requirements
 
-The repository registers representative safe tasks including:
+The OmniSafe stack uses an isolated Python 3.10 environment because its pinned
+dependencies differ from the general benchmark. Follow
+`omnipiano/safety/QUICKSTART.md` in the source repository before running
+reference algorithms. After preparing PIG, verify the registered suite with:
 
-| Family | Example IDs | Main question |
-| --- | --- | --- |
-| Wrist or joint limits | `OmniPiano-ForElise-WristLimit-v0` | Can the policy play while limiting a selected joint magnitude? |
-| Binary collision avoidance | `OmniPiano-ClairDeLune-CollisionSafe-v0` | Can the two hands avoid any contact? |
-| Continuous collision force | `...-CollisionForce-v0` | Can contact severity be reduced smoothly rather than only counted as 0/1? |
-| Total power budget | `...-PowerConstrained-v0` | Can the policy reduce actuator energy while preserving F1? |
-| Injury-style local power | `...-WristInjury-v0`, `...-ThumbInjury-v0` | Can selected joints remain low-power during performance? |
-| Grouped OT-fingering limits | `...-WristMiddleLimitOT-v0`, `...-WristThumbBudgetOT-v0` | Can fingering adapt under shared or summed joint budgets? |
+```bash
+python -m omnipiano.safety.smoke --steps 2 --out safety_smoke.json
+```
 
-The exact registered catalog is defined in `omnipiano/envs/__init__.py`; use
-those IDs directly rather than reconstructing a safety configuration in a
-training script.
-
-## Safe RL integration notes
-
-An algorithm that supports costs should read `step_safety/cost_total` at every
-step and use `episode_safety/cost_total` for episode-level reporting. Do not
-replace the environment reward with `reward - cost` unless you are explicitly
-implementing an unconstrained ablation and label it as such.
-
-For final comparison, evaluate safe policies with `mode="eval"` so musical
-metrics are available, and report at least:
-
-- musical F1 (and precision/recall);
-- mean and maximum episode safety cost;
-- number of violating steps; and
-- the constraint family and penalty coefficients.
-
-See [Cross-Framework Evaluation](../evaluation/cross_framework.md) for the
-common evaluator and [Stable-Baselines3 Evaluation](../evaluation/sb3.md) for
-training/evaluation environment separation.
+See [Cross-Framework Evaluation](../evaluation/cross_framework.md) for common
+final-report semantics.

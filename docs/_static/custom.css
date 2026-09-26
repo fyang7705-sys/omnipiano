@@ -62,3 +62,52 @@ html[data-theme="dark"] .admonition.warning,
 html[data-theme="dark"] .admonition.important {
     background: #352719;
 }
+
+/* Swipeable video galleries in the Overview tutorial. */
+.demo-gallery {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    padding: 0.25rem 0.25rem 1rem;
+    margin: 0 0 1.5rem;
+}
+
+.demo-gallery:focus-visible {
+    outline: 2px solid #3478b8;
+    outline-offset: 2px;
+}
+
+.demo-card {
+    flex: 0 0 min(100%, 30rem);
+    scroll-snap-align: start;
+    margin: 0;
+    border: 1px solid var(--pst-color-border, #c8d0d8);
+    border-radius: 0.6rem;
+    overflow: hidden;
+    background: var(--pst-color-surface, #fff);
+}
+
+.demo-card video {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #111;
+    object-fit: contain;
+}
+
+.demo-card figcaption {
+    padding: 0.75rem 1rem 0.9rem;
+    text-align: left;
+}
+
+.demo-card figcaption strong {
+    display: block;
+}
+
+.demo-card figcaption span {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--pst-color-text-muted, #56616b);
+}

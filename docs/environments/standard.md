@@ -17,6 +17,15 @@ task. If a setting can change the policy's trajectory, encode it in a new
 registration rather than passing it only from a training script.
 ```
 
+## At a glance
+
+| Aspect | Standard RL |
+| --- | --- |
+| Interface | Gymnasium `Env` via `omnipiano.make(env_id)` |
+| Task selection | Use a registered piece and hand layout |
+| Registration | `omnipiano.register()` with a base task and optional `env_config` / `hand_specs` |
+| Evaluation | `mode="eval"` enables terminal musical metrics such as `episode_task/f1` |
+
 ## Supported settings
 
 ### Task and morphology
@@ -96,7 +105,7 @@ The ID must change whenever a trajectory-affecting setting changes. In
 particular, two tasks with different hand layouts, fingering objectives,
 lookahead windows, frame stacks, or control timesteps should not share an ID.
 
-## Use a registered environment
+## Run an environment
 
 Importing `omnipiano` imports `omnipiano.envs`, which executes the official
 `register(...)` declarations. A registered standard task can then be created
@@ -124,7 +133,7 @@ The observation is a flat `float32` box and the action is a canonical
 metrics such as `episode_task/f1`, `episode_task/key_precision`, and
 `episode_task/key_recall`.
 
-## Register a standard environment
+## Register an environment
 
 The shortest registration needs only a unique ID and a RoboPianist base task:
 
@@ -234,7 +243,7 @@ def register_hand_ladder(piece, base_env_name):
         )
 ```
 
-## Registry contract
+## Runtime settings
 
 `make()` deliberately accepts only runtime parameters that do not redefine the
 experiment:
@@ -255,6 +264,8 @@ Calling `register()` twice with the same ID raises `ValueError`. Put official
 registrations in `omnipiano/envs/__init__.py`; keep local registrations in one
 application startup path so subprocesses see the same task catalog.
 ```
+
+## Evaluation and metrics
 
 Use `mode="train"` for training. Use `mode="eval"` to enable musical
 precision/recall/F1 computation, and optionally pass `log_dir` to write one

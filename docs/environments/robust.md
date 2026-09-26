@@ -26,7 +26,18 @@ configuration is resolved from the registered ID, so an RL library does not
 need to pass a special action/configuration dictionary on every step.
 ```
 
-## Supported perturbations
+## At a glance
+
+| Aspect | Robust RL |
+| --- | --- |
+| Interface | Gymnasium `Env` via `omnipiano.make(env_id)` |
+| Task selection | Use a registered perturbation ID and distribution |
+| Registration | `omnipiano.register()` with `RobustConfig` |
+| Evaluation | `mode="eval"` enables metrics; `eval_noise_scale` varies test strength |
+
+## Supported settings
+
+### Perturbation targets
 
 OmniPiano supports three agent-facing signal channels and four physical
 environment parameters.
@@ -51,7 +62,7 @@ By default, observation noise selects keys containing `joints_pos`,
 `joints_vel`, `piano/state`, or `piano/sustain_state`. It deliberately skips
 the score goal, step counter, previous action, and previous reward fields.
 
-## Noise distributions
+### Noise distributions
 
 Every supported target can use one of three distributions:
 
@@ -85,7 +96,9 @@ noised reward received by the policy. Reward-noise tasks currently require
 `frame_stack=1`; registering reward noise with a larger frame stack raises
 `NotImplementedError` rather than updating the wrong flattened frame.
 
-## Signal-level configuration
+## Register an environment
+
+### Signal perturbations
 
 The following registration adds Gaussian action noise with standard deviation
 0.10:
@@ -140,7 +153,7 @@ register(
 When using per-channel overrides, name every active channel explicitly. This
 makes a mixed configuration readable without relying on the global fallback.
 
-## Physical environment configuration
+### Physical perturbations
 
 Physical perturbations live in a nested `RobustEnvConfig`. This example
 samples gravity once per episode, contact friction every control step, and the
@@ -196,7 +209,7 @@ register(
 )
 ```
 
-## Built-in robust families
+## Environment IDs
 
 The canonical Clair de Lune signal sweep varies one factor at a time:
 
@@ -273,7 +286,7 @@ For official benchmark families, keep the loop and its helper in
 `omnipiano/envs/__init__.py`. Registration happens when `omnipiano` is
 imported, and duplicate IDs fail immediately.
 
-## Training and evaluation
+## Run an environment
 
 Training always uses the exact magnitudes stored in the registered
 `RobustConfig`:
@@ -286,12 +299,18 @@ train_env = make(
     mode="train",
     seed=0,
 )
+observation, info = train_env.reset(seed=0)
+action = train_env.action_space.sample()
+observation, reward, terminated, truncated, info = train_env.step(action)
+train_env.close()
 ```
 
 The policy still calls `step(action)`. Unlike Robust-Gymnasium, OmniPiano does
 not require a dictionary containing an action and perturbation configuration
 at every step. The registry resolves the robust settings before the rollout,
 so standard Gymnasium-compatible trainers need no robust-specific adapter.
+
+## Evaluation and metrics
 
 ### Evaluation strength
 

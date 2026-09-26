@@ -2,7 +2,7 @@
 
 OmniPiano exposes cooperative multi-hand tasks through the PettingZoo
 `ParallelEnv` API. Each environment decomposes a registered N-hand piano task
-into two or three decentralized agents, gives every agent its own observation
+into decentralized agents, gives every agent its own observation
 and action space, and keeps one shared musical objective.
 
 ```{figure} ../_static/images/maRL.png
@@ -18,10 +18,21 @@ scalability through agent-specific observation and action territories.
 ```{note}
 Single-agent and multi-agent environments have different APIs. Use
 `omnipiano.make()` for a Gymnasium environment and
-`omnipiano.multiagent.make_parallel()` for a PettingZoo `ParallelEnv`.
+`omnipiano.make_parallel()` for a PettingZoo `ParallelEnv`.
 ```
 
-## Built-in agent layouts
+## At a glance
+
+| Aspect | Multi-Agent RL |
+| --- | --- |
+| Interface | PettingZoo `ParallelEnv` via `omnipiano.make_parallel(env_id)` |
+| Task selection | Choose a registered Territorial ID or compile a custom SCHO task |
+| Registration | `register_parallel()` for reusable IDs; custom tasks use `compile_task()` and `make_parallel_from_task()` |
+| Evaluation | Shared reward per agent; terminal musical metrics in `infos["_global_"]` |
+
+## Supported settings
+
+### Agent layouts
 
 The current Territorial series groups spatially adjacent hands into agents:
 
@@ -35,7 +46,7 @@ Only the sustain owner receives the sustain dimension in its action space.
 For the default 22-dimensional hand action layout, a two-hand sustain owner
 has 45 actions, a two-hand non-owner has 44, and a one-hand agent has 22.
 
-## Registered environment IDs
+## Environment IDs
 
 Multi-agent IDs follow this pattern:
 
@@ -60,15 +71,15 @@ for env_id in list_parallel_envs():
     print(env_id)
 ```
 
-## Run a parallel environment
+## Run an environment
 
 PettingZoo parallel environments consume one action per active agent and
 return dictionaries keyed by agent name:
 
 ```python
-from omnipiano.multiagent import make_parallel
+import omnipiano
 
-env = make_parallel(
+env = omnipiano.make_parallel(
     "OmniPiano-WinterWind-FourHand-MA-Duet-Territorial-v0",
     seed=42,
 )
@@ -123,14 +134,16 @@ Set `flatten_obs=True` when a framework requires one flat `Box` observation
 per agent:
 
 ```python
-env = make_parallel(
+import omnipiano
+
+env = omnipiano.make_parallel(
     "OmniPiano-WinterWind-FourHand-MA-Duet-Territorial-v0",
     seed=42,
     flatten_obs=True,
 )
 ```
 
-## Episode metrics
+## Evaluation and metrics
 
 At the terminal step, environment-wide musical metrics are added under the
 special `infos["_global_"]` entry:
@@ -146,7 +159,7 @@ print(global_metrics.get("episode_task/sustain_f1"))
 These are joint performance metrics for the whole ensemble, not independent
 per-agent F1 scores.
 
-## Register a custom multi-agent environment
+## Register an environment
 
 A multi-agent registration points to an existing single-agent StaticPartition
 task and names one of the supported morphology assignments:
@@ -177,6 +190,39 @@ Use an ID containing `-MA-` with `make_parallel()`. Passing it to
 passing a single-agent ID to `make_parallel()` produces the opposite redirect.
 ```
 
+### Build a custom SCHO task
+
+The updated multi-agent compiler can construct a task directly from a
+versioned JSON task specification without mutating either registry. This is
+the recommended surface for the SCHO studies of scalability, coupling,
+heterogeneity, and observability.
+
+Start from `omnipiano/multiagent/configs/marl_task_example.json`. Its `task`
+block defines the song, hand count, agent-to-hand assignment, action ranges,
+observation ranges, visible teammate hands, and sustain owner:
+
+```python
+import json
+import omnipiano
+from omnipiano.multiagent.compile import compile_task
+
+with open("omnipiano/multiagent/configs/marl_task_example.json") as file:
+    config = json.load(file)
+
+env = omnipiano.make_parallel_from_task(
+    compile_task(config["task"]),
+    seed=0,
+    flatten_obs=True,
+)
+observations, infos = env.reset(seed=0)
+env.close()
+```
+
+`compile_task()` resolves the user-facing JSON `task` block into the task
+snapshot expected by `make_parallel_from_task()`. This path supports custom agent counts and
+explicitly overlapping action/observation territories while preserving a
+fully serializable experiment definition.
+
 ## Runtime settings
 
 `make_parallel()` accepts the normal non-trajectory runtime fields plus a
@@ -190,6 +236,9 @@ small multi-agent surface:
 | `reward_mode` | Phase 1 supports only `"shared"` |
 | `flatten_obs` | Preserve Dict observations or flatten each agent to a Box |
 | `sustain_owner` | Override the morphology's default pedal-owning agent |
+| `include_global_state` | Add centralized critic state; currently requires `flatten_obs=True` |
+| `inter_agent_collision_penalty_coef` | Optional shared-reward penalty for inter-agent contact |
+| `robust_config` | Optional observation-noise configuration; other robust channels are rejected |
 
 Changing the sustain owner is useful for exceptional pieces or controlled
 ablations, but the chosen name must be one of the agents in that morphology.
@@ -201,7 +250,8 @@ boundaries in mind:
 
 - only `own_plus_boundary` observation visibility is implemented;
 - only shared reward is implemented;
-- the underlying task must use a static per-hand keyboard partition;
+- registered Territorial tasks use static hand partitions; custom compiled
+  tasks may define explicit agent action and observation ranges;
 - single-agent safety constraints are rejected because the multi-agent chain
   does not yet expose `SafetyWrapper` costs;
 - action-noise and reward-noise single-agent bases are rejected;
@@ -215,10 +265,17 @@ These checks fail early instead of silently dropping costs or perturbations.
 ## Framework integration
 
 The PettingZoo `ParallelEnv` can be adapted to MARL frameworks such as RLlib.
-The repository includes development examples for MAPPO training and evaluation
-under `omnipiano/multiagent/_train_mappo.py` and
-`omnipiano/multiagent/_eval_mappo.py`. Framework adapters commonly use
-`flatten_obs=True` because policy networks often expect fixed vectors.
+The current training entry point is configuration-driven:
+
+```bash
+python -m omnipiano.multiagent.train --list-algos
+python -m omnipiano.multiagent.train --list-envs
+python -m omnipiano.multiagent.train \
+    omnipiano/multiagent/configs/marl_task_example.json --dry-run
+```
+
+Framework adapters commonly use `flatten_obs=True`; centralized-critic
+methods may additionally request `include_global_state=True`.
 
 ```{important}
 Do not reuse the single-agent cross-framework evaluator unchanged for a
